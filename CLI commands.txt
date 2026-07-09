@@ -1,0 +1,29 @@
+Run these from c:\Users\nimes\Desktop\Bot Calm\Blockchain\toy-blockchain:
+
+go run ./cmd init
+
+create a fresh blockchain and save blockchain.json
+go run ./cmd addtx SYSTEM Alice 50
+
+fund Alice via faucet/coinbase
+go run ./cmd addtx SYSTEM Bob 30
+
+fund Bob via faucet/coinbase
+go run ./cmd addtx Alice Bob 20
+
+add a valid transaction
+go run ./cmd addtx Bob Carol 10
+
+add another valid transaction
+go run ./cmd mine
+
+mine pending transactions into a new block
+go run ./cmd print
+
+print the full blockchain
+go run ./cmd balances
+
+show account balances
+go run ./cmd validate
+
+validate the blockchain
