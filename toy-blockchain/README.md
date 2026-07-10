@@ -49,6 +49,7 @@ The CLI supports these commands:
 - `go run ./cmd print`
   - Print the full blockchain contents to stdout
 - `go run ./cmd balances`
+- `go run ./cmd balance <acc>`
   - Show current confirmed account balances
 - `go run ./cmd validate`
   - Validate blockchain integrity and proof-of-work

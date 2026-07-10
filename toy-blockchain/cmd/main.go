@@ -15,6 +15,7 @@ func usage() {
 	fmt.Println("  go run ./cmd mine")
 	fmt.Println("  go run ./cmd print")
 	fmt.Println("  go run ./cmd balances")
+	fmt.Println("  go run ./cmd balance <account>")
 	fmt.Println("  go run ./cmd validate")
 	fmt.Println()
 	fmt.Println("Global flags:")
@@ -100,7 +101,7 @@ func parseCLI(args []string) (string, []string, int, int, string, error) {
 
 func isCommand(arg string) bool {
 	switch arg {
-	case "init", "addtx", "mine", "print", "balances", "validate":
+	case "init", "addtx", "mine", "print", "balances", "balance", "validate":
 		return true
 	default:
 		return false
@@ -179,6 +180,21 @@ func main() {
 		for account, balance := range balances {
 			fmt.Printf("%s: %.8f\n", account, balance)
 		}
+
+	case "balance":
+		if len(cmdArgs) != 1 {
+			fmt.Fprintln(os.Stderr, "balance requires exactly one account name")
+			usage()
+			os.Exit(1)
+		}
+		account := cmdArgs[0]
+		balances := bc.GetBalances()
+		balance, ok := balances[account]
+		if !ok {
+			fmt.Fprintf(os.Stderr, "account not found: %s\n", account)
+			os.Exit(1)
+		}
+		fmt.Printf("%s: %.8f\n", account, balance)
 
 	case "validate":
 		if err := bc.Validate(); err != nil {

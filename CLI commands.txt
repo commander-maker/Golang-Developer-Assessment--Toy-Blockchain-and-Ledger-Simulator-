@@ -22,6 +22,7 @@ go run ./cmd print
 
 print the full blockchain
 go run ./cmd balances
+go run ./cmd balance Alice
 
 show account balances
 go run ./cmd validate
