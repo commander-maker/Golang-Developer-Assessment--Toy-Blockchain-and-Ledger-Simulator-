@@ -7,6 +7,20 @@
       "previousHash": "0000000000000000000000000000000000000000000000000000000000000000",
       "nonce": 0,
       "hash": "fa39680f82b19516988469b266ecc02061b88932fabecaffb3a0d2f4b1cb1d63"
+    },
+    {
+      "index": 1,
+      "timestamp": 1783673137593469300,
+      "transactions": [
+        {
+          "sender": "SYSTEM",
+          "recipient": "Alice",
+          "amount": 50
+        }
+      ],
+      "previousHash": "fa39680f82b19516988469b266ecc02061b88932fabecaffb3a0d2f4b1cb1d63",
+      "nonce": 24479,
+      "hash": "0000b5aa7daa77378cf4509b502ce19adbe7743be8be703c24fdbddf543eb505"
     }
   ],
   "pendingTransactions": [],

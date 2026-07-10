@@ -35,6 +35,16 @@ func TestBlockchain_Validate_InvalidHashIntegrity(t *testing.T) {
 	}
 }
 
+func TestBlockchain_Validate_InvalidGenesisBlock(t *testing.T) {
+	bc := blockchain.NewBlockchain()
+	bc.Blocks[0].Timestamp = 123
+	bc.Blocks[0].Hash = blockchain.CalculateHash(bc.Blocks[0])
+
+	if err := bc.Validate(); err == nil {
+		t.Fatal("expected validation to fail for mutated genesis block")
+	}
+}
+
 func TestBlockchain_Validate_InvalidPreviousHash(t *testing.T) {
 	bc := blockchain.NewBlockchain()
 	bc.AddBlock(singleTx("Alice", "Bob", 10.0))

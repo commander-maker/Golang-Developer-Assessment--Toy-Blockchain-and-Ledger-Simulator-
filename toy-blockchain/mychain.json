@@ -10,7 +10,7 @@
     },
     {
       "index": 1,
-      "timestamp": 1783660332816817600,
+      "timestamp": 1783675688139916400,
       "transactions": [
         {
           "sender": "SYSTEM",
@@ -24,17 +24,39 @@
         }
       ],
       "previousHash": "fa39680f82b19516988469b266ecc02061b88932fabecaffb3a0d2f4b1cb1d63",
-      "nonce": 235,
-      "hash": "0005d20c55a3dd7e7f9ff7065eaf2cdf61cacdc0fcbcc91bbdd73d1f44c5ae4c"
-    }
-  ],
-  "pendingTransactions": [
+      "nonce": 23616,
+      "hash": "000010f3f6f5ed90032b361ca41ec4f0cfc209903e68757c60de3185b15f57c1"
+    },
     {
-      "sender": "Alice",
-      "recipient": "Bob",
-      "amount": 30
+      "index": 2,
+      "timestamp": 1783675772873519800,
+      "transactions": [
+        {
+          "sender": "Alice",
+          "recipient": "Bob",
+          "amount": 20
+        }
+      ],
+      "previousHash": "000010f3f6f5ed90032b361ca41ec4f0cfc209903e68757c60de3185b15f57c1",
+      "nonce": 3843,
+      "hash": "000b3a4dc3a241e2d42aaefd3cc9cf61077c056803c6b2560e8749390ab2cc90"
+    },
+    {
+      "index": 3,
+      "timestamp": 1783676811151259900,
+      "transactions": [
+        {
+          "sender": "Bob",
+          "recipient": "Allice",
+          "amount": 10
+        }
+      ],
+      "previousHash": "000b3a4dc3a241e2d42aaefd3cc9cf61077c056803c6b2560e8749390ab2cc90",
+      "nonce": 1060,
+      "hash": "00e8875e25250cb86941c581fdd0b63ee652a7af5136002252b46d4aee559917"
     }
   ],
-  "difficulty": 3,
+  "pendingTransactions": [],
+  "difficulty": 2,
   "blockSize": 2
 }

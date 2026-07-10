@@ -24,10 +24,12 @@ func usage() {
 	fmt.Println("  --file <path>     Blockchain data file (default: blockchain.json)")
 }
 
-func parseCLI(args []string) (string, []string, int, int, string, error) {
-	difficulty := blockchain.DefaultDifficulty
-	blockSize := blockchain.DefaultBlockSize
+func parseCLI(args []string) (string, []string, int, bool, int, bool, string, error) {
+	difficulty := -1
+	blockSize := -1
 	dataFile := blockchain.DefaultDataFile
+	difficultySet := false
+	blockSizeSet := false
 
 	remaining := []string{}
 	for i := 0; i < len(args); i++ {
@@ -36,18 +38,20 @@ func parseCLI(args []string) (string, []string, int, int, string, error) {
 			value := strings.TrimPrefix(arg, "--difficulty=")
 			d, err := strconv.Atoi(value)
 			if err != nil {
-				return "", nil, 0, 0, "", fmt.Errorf("invalid difficulty: %v", err)
+				return "", nil, 0, false, 0, false, "", fmt.Errorf("invalid difficulty: %v", err)
 			}
 			difficulty = d
+			difficultySet = true
 			continue
 		}
 		if strings.HasPrefix(arg, "--blocksize=") {
 			value := strings.TrimPrefix(arg, "--blocksize=")
 			b, err := strconv.Atoi(value)
 			if err != nil {
-				return "", nil, 0, 0, "", fmt.Errorf("invalid blocksize: %v", err)
+				return "", nil, 0, false, 0, false, "", fmt.Errorf("invalid blocksize: %v", err)
 			}
 			blockSize = b
+			blockSizeSet = true
 			continue
 		}
 		if strings.HasPrefix(arg, "--file=") {
@@ -58,27 +62,29 @@ func parseCLI(args []string) (string, []string, int, int, string, error) {
 		switch arg {
 		case "--difficulty":
 			if i+1 >= len(args) {
-				return "", nil, 0, 0, "", fmt.Errorf("missing value for --difficulty")
+				return "", nil, 0, false, 0, false, "", fmt.Errorf("missing value for --difficulty")
 			}
 			d, err := strconv.Atoi(args[i+1])
 			if err != nil {
-				return "", nil, 0, 0, "", fmt.Errorf("invalid difficulty: %v", err)
+				return "", nil, 0, false, 0, false, "", fmt.Errorf("invalid difficulty: %v", err)
 			}
 			difficulty = d
+			difficultySet = true
 			i++
 		case "--blocksize":
 			if i+1 >= len(args) {
-				return "", nil, 0, 0, "", fmt.Errorf("missing value for --blocksize")
+				return "", nil, 0, false, 0, false, "", fmt.Errorf("missing value for --blocksize")
 			}
 			b, err := strconv.Atoi(args[i+1])
 			if err != nil {
-				return "", nil, 0, 0, "", fmt.Errorf("invalid blocksize: %v", err)
+				return "", nil, 0, false, 0, false, "", fmt.Errorf("invalid blocksize: %v", err)
 			}
 			blockSize = b
+			blockSizeSet = true
 			i++
 		case "--file":
 			if i+1 >= len(args) {
-				return "", nil, 0, 0, "", fmt.Errorf("missing value for --file")
+				return "", nil, 0, false, 0, false, "", fmt.Errorf("missing value for --file")
 			}
 			dataFile = args[i+1]
 			i++
@@ -88,15 +94,15 @@ func parseCLI(args []string) (string, []string, int, int, string, error) {
 	}
 
 	if len(remaining) == 0 {
-		return "", nil, 0, 0, "", fmt.Errorf("command required")
+		return "", nil, 0, false, 0, false, "", fmt.Errorf("command required")
 	}
 
 	cmd := remaining[0]
 	if !isCommand(cmd) {
-		return "", nil, 0, 0, "", fmt.Errorf("unknown command: %s", cmd)
+		return "", nil, 0, false, 0, false, "", fmt.Errorf("unknown command: %s", cmd)
 	}
 
-	return cmd, remaining[1:], difficulty, blockSize, dataFile, nil
+	return cmd, remaining[1:], difficulty, difficultySet, blockSize, blockSizeSet, dataFile, nil
 }
 
 func isCommand(arg string) bool {
@@ -115,7 +121,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	cmd, cmdArgs, difficulty, blockSize, dataFile, err := parseCLI(args)
+	cmd, cmdArgs, difficulty, difficultySet, blockSize, blockSizeSet, dataFile, err := parseCLI(args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to parse CLI flags: %v\n", err)
 		os.Exit(1)
@@ -130,8 +136,12 @@ func main() {
 		fmt.Fprintf(os.Stderr, "failed to load blockchain: %v\n", err)
 		os.Exit(1)
 	}
-	bc.Difficulty = difficulty
-	bc.BlockSize = blockSize
+	if difficultySet {
+		bc.Difficulty = difficulty
+	}
+	if blockSizeSet {
+		bc.BlockSize = blockSize
+	}
 
 	switch cmd {
 	case "init":

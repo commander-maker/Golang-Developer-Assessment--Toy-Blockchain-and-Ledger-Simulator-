@@ -265,6 +265,18 @@ func (bc *Blockchain) Validate() error {
 			if current.Index != 0 {
 				return fmt.Errorf("invalid genesis block index: expected 0, got %d", current.Index)
 			}
+			if current.Timestamp != 0 {
+				return fmt.Errorf("invalid genesis block timestamp: expected 0, got %d", current.Timestamp)
+			}
+			if current.PrevHash != GenesisPrevHash {
+				return fmt.Errorf("invalid genesis block previous hash: expected %s, got %s", GenesisPrevHash, current.PrevHash)
+			}
+			if len(current.Transactions) != 0 {
+				return fmt.Errorf("invalid genesis block: expected no transactions, got %d", len(current.Transactions))
+			}
+			if current.Nonce != 0 {
+				return fmt.Errorf("invalid genesis block nonce: expected 0, got %d", current.Nonce)
+			}
 			continue
 		}
 
