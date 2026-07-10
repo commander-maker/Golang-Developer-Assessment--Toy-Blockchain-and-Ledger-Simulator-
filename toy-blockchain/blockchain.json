@@ -9,11 +9,7 @@
       "hash": "fa39680f82b19516988469b266ecc02061b88932fabecaffb3a0d2f4b1cb1d63"
     }
   ],
-  "pendingTransactions": [
-    {
-      "sender": "SYSTEM",
-      "recipient": "Alice",
-      "amount": 50
-    }
-  ]
+  "pendingTransactions": [],
+  "difficulty": 4,
+  "blockSize": 10
 }

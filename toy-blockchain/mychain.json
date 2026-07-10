@@ -1,0 +1,40 @@
+{
+  "blocks": [
+    {
+      "index": 0,
+      "timestamp": 0,
+      "transactions": [],
+      "previousHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "nonce": 0,
+      "hash": "fa39680f82b19516988469b266ecc02061b88932fabecaffb3a0d2f4b1cb1d63"
+    },
+    {
+      "index": 1,
+      "timestamp": 1783660332816817600,
+      "transactions": [
+        {
+          "sender": "SYSTEM",
+          "recipient": "Alice",
+          "amount": 50
+        },
+        {
+          "sender": "SYSTEM",
+          "recipient": "Bob",
+          "amount": 50
+        }
+      ],
+      "previousHash": "fa39680f82b19516988469b266ecc02061b88932fabecaffb3a0d2f4b1cb1d63",
+      "nonce": 235,
+      "hash": "0005d20c55a3dd7e7f9ff7065eaf2cdf61cacdc0fcbcc91bbdd73d1f44c5ae4c"
+    }
+  ],
+  "pendingTransactions": [
+    {
+      "sender": "Alice",
+      "recipient": "Bob",
+      "amount": 30
+    }
+  ],
+  "difficulty": 3,
+  "blockSize": 2
+}

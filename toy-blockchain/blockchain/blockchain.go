@@ -1,9 +1,11 @@
 package blockchain
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -13,14 +15,19 @@ import (
 // and makes it immediately obvious in logs/output that this is the chain origin.
 const GenesisPrevHash = "0000000000000000000000000000000000000000000000000000000000000000"
 
-// Difficulty defines the number of leading zeros required for a block's hash to be valid (Proof-of-Work).
-const Difficulty = 4
+// DefaultDifficulty defines the number of leading zeros required for a block's hash to be valid (Proof-of-Work).
+const DefaultDifficulty = 4
+
+// DefaultBlockSize limits how many transactions are mined into a single block.
+const DefaultBlockSize = 10
 
 // Blockchain is an ordered slice of Block pointers.
 // The first element (index 0) is always the Genesis block.
 type Blockchain struct {
 	Blocks              []*Block      `json:"blocks"`
 	PendingTransactions []Transaction `json:"pendingTransactions"`
+	Difficulty          int           `json:"difficulty"`
+	BlockSize           int           `json:"blockSize"`
 }
 
 // NewBlockchain is the constructor for a fresh Blockchain.
@@ -47,11 +54,19 @@ type Blockchain struct {
 //	│  Return Blockchain  │  ← hand back the ready chain
 //	└─────────────────────┘
 func NewBlockchain() *Blockchain {
+	return NewBlockchainWithConfig(DefaultDifficulty, DefaultBlockSize)
+}
+
+// NewBlockchainWithConfig creates a fresh blockchain using the supplied mining settings.
+func NewBlockchainWithConfig(difficulty, blockSize int) *Blockchain {
 	// Step 1 — New Blockchain: allocate an empty chain.
 	bc := &Blockchain{
 		Blocks:              []*Block{},
 		PendingTransactions: []Transaction{},
+		Difficulty:          difficulty,
+		BlockSize:           blockSize,
 	}
+	bc.applyDefaults()
 
 	// Step 2 — Create Genesis Block: build the block with all fixed spec values.
 	//           genesisBlock() returns the block WITHOUT a hash yet — the hash
@@ -89,6 +104,15 @@ func newGenesisBlock() *Block {
 		PrevHash:     GenesisPrevHash,
 		Nonce:        0,
 		// Hash is intentionally left empty — filled in by NewBlockchain Step 3.
+	}
+}
+
+func (bc *Blockchain) applyDefaults() {
+	if bc.Difficulty <= 0 {
+		bc.Difficulty = DefaultDifficulty
+	}
+	if bc.BlockSize <= 0 {
+		bc.BlockSize = DefaultBlockSize
 	}
 }
 
@@ -147,12 +171,17 @@ func LoadFromFile(path string) (*Blockchain, error) {
 		return nil, err
 	}
 
+	if len(bytes.TrimSpace(data)) == 0 {
+		return NewBlockchain(), nil
+	}
+
 	var bc Blockchain
 	if err := json.Unmarshal(data, &bc); err != nil {
 		return nil, err
 	}
+	bc.applyDefaults()
 	if len(bc.Blocks) == 0 {
-		return NewBlockchain(), nil
+		return NewBlockchainWithConfig(bc.Difficulty, bc.BlockSize), nil
 	}
 	if bc.PendingTransactions == nil {
 		bc.PendingTransactions = []Transaction{}
@@ -169,6 +198,11 @@ func (bc *Blockchain) SaveToFile(path string) error {
 	if err != nil {
 		return err
 	}
+	if dir := filepath.Dir(path); dir != "." {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return err
+		}
+	}
 	return os.WriteFile(path, data, 0o644)
 }
 
@@ -182,18 +216,29 @@ func (bc *Blockchain) AddBlock(txs []Transaction) {
 }
 
 // MinePendingTransactions creates a new block from the pending transaction pool,
-// mines it using the package-level Difficulty, appends it to the chain, and then
-// clears the pending pool.
+// mines it using the blockchain's configured difficulty and block size, appends it
+// to the chain, and leaves any unmined transactions pending.
 func (bc *Blockchain) MinePendingTransactions() {
 	if len(bc.PendingTransactions) == 0 {
 		return
 	}
 
+	bc.applyDefaults()
 	prev := bc.Blocks[len(bc.Blocks)-1]
-	newBlock := NewBlock(prev.Index+1, bc.PendingTransactions, prev.Hash)
-	newBlock.Mine(Difficulty)
+	maxTransactions := len(bc.PendingTransactions)
+	if bc.BlockSize > 0 && bc.BlockSize < maxTransactions {
+		maxTransactions = bc.BlockSize
+	}
+
+	transactionsToMine := append([]Transaction(nil), bc.PendingTransactions[:maxTransactions]...)
+	newBlock := NewBlock(prev.Index+1, transactionsToMine, prev.Hash)
+	newBlock.Mine(bc.Difficulty)
 	bc.Blocks = append(bc.Blocks, newBlock)
-	bc.PendingTransactions = []Transaction{}
+	if maxTransactions < len(bc.PendingTransactions) {
+		bc.PendingTransactions = append([]Transaction(nil), bc.PendingTransactions[maxTransactions:]...)
+	} else {
+		bc.PendingTransactions = []Transaction{}
+	}
 }
 
 // Validate checks the full blockchain for integrity.
@@ -208,7 +253,8 @@ func (bc *Blockchain) Validate() error {
 		return fmt.Errorf("blockchain contains no blocks")
 	}
 
-	target := strings.Repeat("0", Difficulty)
+	bc.applyDefaults()
+	target := strings.Repeat("0", bc.Difficulty)
 
 	for i, current := range bc.Blocks {
 		if current.Hash != CalculateHash(current) {

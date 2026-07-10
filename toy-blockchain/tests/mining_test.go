@@ -58,3 +58,38 @@ func TestBlock_Mine(t *testing.T) {
 		t.Fatalf("mined block hash %q does not match recalculated hash %q", b.Hash, recalculatedHash)
 	}
 }
+
+func TestMinePendingTransactions_UsesConfiguredBlockSize(t *testing.T) {
+	bc := blockchain.NewBlockchain()
+	bc.BlockSize = 2
+
+	if err := bc.AddTransaction(blockchain.Transaction{Sender: "SYSTEM", Recipient: "Alice", Amount: 100}); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, tx := range []blockchain.Transaction{
+		{Sender: "Alice", Recipient: "Bob", Amount: 10},
+		{Sender: "Alice", Recipient: "Carol", Amount: 5},
+		{Sender: "Alice", Recipient: "David", Amount: 3},
+		{Sender: "Alice", Recipient: "Eve", Amount: 2},
+	} {
+		if err := bc.AddTransaction(tx); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	bc.MinePendingTransactions()
+
+	if len(bc.Blocks) != 2 {
+		t.Fatalf("expected 2 blocks after mining with block size 2, got %d", len(bc.Blocks))
+	}
+
+	minedBlock := bc.Blocks[1]
+	if len(minedBlock.Transactions) != 2 {
+		t.Fatalf("expected mined block to contain 2 transactions, got %d", len(minedBlock.Transactions))
+	}
+
+	if len(bc.PendingTransactions) != 3 {
+		t.Fatalf("expected 3 pending transactions to remain after mining, got %d", len(bc.PendingTransactions))
+	}
+}

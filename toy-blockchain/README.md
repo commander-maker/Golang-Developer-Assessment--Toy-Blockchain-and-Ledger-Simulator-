@@ -1,46 +1,98 @@
 # 🔗 Toy Blockchain — Built in Go
 
-A ground-up blockchain implementation in Go, built step by step.
+A small Go-based toy blockchain implementation with persistence, mining, transaction validation, and blockchain integrity checks.
 
-## Day 1 Objectives
+## Build & Run
 
-- [x] Project structure
-- [x] `go.mod`
-- [x] `Block` struct
-- [x] `Blockchain` struct
-- [x] Genesis Block
-- [x] SHA-256 deterministic hashing
-- [x] Print the blockchain
-- [x] Basic unit tests for hashing
-
-## Project Structure
-
-```
-toy-blockchain/
-│
-├── cmd/
-│   └── main.go          ← Entry point
-│
-├── blockchain/
-│   ├── block.go         ← Block struct & constructor
-│   ├── blockchain.go    ← Blockchain struct, Genesis, AddBlock, Print
-│   └── hash.go          ← SHA-256 hashing logic
-│
-├── tests/
-│   └── hash_test.go     ← Unit tests for hashing
-│
-├── go.mod
-└── README.md
-```
-
-## How to Run
+From `toy-blockchain/`:
 
 ```bash
-go run cmd/main.go
+go build ./cmd
 ```
 
-## How to Test
+Then run the CLI from the workspace root:
 
 ```bash
-go test ./tests/...
+./cmd.exe init
+./cmd.exe addtx SYSTEM Alice 50
+./cmd.exe mine
+./cmd.exe print
+./cmd.exe balances
+./cmd.exe validate
 ```
+
+Or skip the build step and run directly with Go:
+
+```bash
+go run ./cmd init
+```
+
+## Tests
+
+Run the unit tests with:
+
+```bash
+go test ./tests
+```
+
+## Command-Line Commands
+
+The CLI supports these commands:
+
+- `go run ./cmd init`
+  - Create or reinitialize the local blockchain and save it to `blockchain.json`
+- `go run ./cmd addtx <sender> <recipient> <amount>`
+  - Add a transaction to the pending pool
+  - `SYSTEM` is used as a faucet account for initial balance injection
+- `go run ./cmd mine`
+  - Mine a new block from pending transactions and append it to the chain
+- `go run ./cmd print`
+  - Print the full blockchain contents to stdout
+- `go run ./cmd balances`
+  - Show current confirmed account balances
+- `go run ./cmd validate`
+  - Validate blockchain integrity and proof-of-work
+
+## Runtime Configuration
+
+The CLI supports optional flags for mining and persistence:
+
+```bash
+go run ./cmd mine --difficulty=5 --blocksize=2 --file=mychain.json
+```
+
+- `--difficulty` sets proof-of-work difficulty (default: `4`)
+- `--blocksize` limits how many pending transactions are included in the mined block (default: `10`)
+- `--file` chooses the JSON file used for blockchain persistence (default: `blockchain.json`)
+
+## Project Layout
+
+- `cmd/main.go`
+  - CLI entry point and command dispatch
+- `blockchain/block.go`
+  - Block structure, constructor, and mining logic
+- `blockchain/hash.go`
+  - SHA-256 block hashing, transaction serialization, and hash contract
+- `blockchain/blockchain.go`
+  - Blockchain state, genesis creation, transaction validation, mining, persistence, and validation logic
+- `tests/`
+  - Unit tests for hashing, block construction, mining, and chain validation
+
+## Design Decisions
+
+- **Deterministic Genesis block**: Genesis is created with fixed values (`Index=0`, `Timestamp=0`, `PrevHash=64 zeros`, `Nonce=0`) so every fresh node starts from the same root.
+- **SHA-256 hashing contract**: The block hash is computed from the exact serialization order `Index | Timestamp | Transactions | PrevHash | Nonce`. The `Hash` field itself is excluded to avoid circular dependency.
+- **Simple proof-of-work**: Mining finds a hash with a constant leading-zero difficulty (`Difficulty = 4`). This is intentionally straightforward for demonstration and testing.
+- **Pending transaction pool**: Transactions are validated before being appended to pending state. Balances include pending transactions when checking spend availability so double-spend attempts in the pending pool are blocked.
+- **JSON persistence**: The chain is saved to and loaded from `blockchain.json` in the repo folder. This keeps state local and easy to inspect.
+- **Single-node model**: The implementation focuses on local chain behavior, not distributed networking or consensus.
+
+## Known Limitations
+
+- No peer-to-peer networking or consensus algorithm is implemented.
+- No cryptographic signatures or account authentication — transactions are only validated by sender balance.
+- Balances are computed by simple subtraction/addition, not a full UTXO or account model.
+- Mining difficulty is fixed and not dynamically adjusted.
+- No transaction fees, mempool prioritization, or persistence safeguards beyond plain JSON.
+- Mining is CPU-bound and sequential, which is fine for toy usage but not production scale.
+- The `blockchain.json` file is overwritten on every save and does not support automatic backup or concurrency control.
