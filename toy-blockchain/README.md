@@ -19,6 +19,7 @@ Then run the CLI from the workspace root:
 ./cmd.exe print
 ./cmd.exe balances
 ./cmd.exe validate
+./cmd generate-key alice
 ```
 
 Or skip the build step and run directly with Go:
@@ -44,6 +45,8 @@ The CLI supports these commands:
 - `go run ./cmd addtx <sender> <recipient> <amount>`
   - Add a transaction to the pending pool
   - `SYSTEM` is used as a faucet account for initial balance injection
+- `go run ./cmd generate-key alice`
+  - generate a new PEM key file automatically
 - `go run ./cmd mine`
   - Mine a new block from pending transactions and append it to the chain
 - `go run ./cmd print`

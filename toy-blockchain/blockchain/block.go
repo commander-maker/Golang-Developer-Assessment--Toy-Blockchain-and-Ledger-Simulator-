@@ -21,6 +21,7 @@ type Block struct {
 	Transactions []Transaction `json:"transactions"`
 	PrevHash     string        `json:"previousHash"`
 	Nonce        int           `json:"nonce"`
+	MerkleRoot   string        `json:"merkleRoot"`
 	Hash         string        `json:"hash"`
 }
 
@@ -37,6 +38,8 @@ func NewBlock(index int, txs []Transaction, prevHash string) *Block {
 		PrevHash:     prevHash,
 		Nonce:        0,
 	}
+	// Compute Merkle root from transactions before computing the block hash.
+	b.MerkleRoot = CalculateMerkleRoot(b.Transactions)
 	b.Hash = CalculateHash(b)
 	return b
 }

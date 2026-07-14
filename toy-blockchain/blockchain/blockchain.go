@@ -73,8 +73,10 @@ func NewBlockchainWithConfig(difficulty, blockSize int) *Blockchain {
 	//           step is deliberately kept here so the flow is explicit.
 	genesis := newGenesisBlock()
 
-	// Step 3 — Calculate Hash: compute SHA-256 over the five input fields.
-	//           This is the only place the genesis hash is produced.
+	// Step 3 — Calculate Merkle root and Hash: compute Merkle root from txs,
+	// then compute SHA-256 over the five input fields. This is the only place
+	// the genesis hash is produced.
+	genesis.MerkleRoot = CalculateMerkleRoot(genesis.Transactions)
 	genesis.Hash = CalculateHash(genesis)
 
 	// Step 4 — Store Genesis Block: attach it as the first (and only) block.
@@ -265,6 +267,11 @@ func (bc *Blockchain) Validate() error {
 	target := strings.Repeat("0", bc.Difficulty)
 
 	for i, current := range bc.Blocks {
+		// Verify MerkleRoot matches the transactions to detect tampering.
+		recomputedMerkle := CalculateMerkleRoot(current.Transactions)
+		if current.MerkleRoot != recomputedMerkle {
+			return fmt.Errorf("invalid block %d: merkle root does not match transactions", current.Index)
+		}
 		if current.Hash != CalculateHash(current) {
 			return fmt.Errorf("invalid block %d: stored hash does not match calculated hash", current.Index)
 		}

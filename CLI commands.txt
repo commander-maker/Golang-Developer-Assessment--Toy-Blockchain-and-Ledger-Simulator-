@@ -8,6 +8,9 @@ go run ./cmd addtx SYSTEM Alice 50
 fund Alice via faucet/coinbase
 go run ./cmd addtx SYSTEM Bob 30
 
+generate a new PEM key file automatically
+go run ./cmd generate-key alice
+
 fund Bob via faucet/coinbase
 go run ./cmd addtx Alice Bob 20
 

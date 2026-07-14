@@ -6,11 +6,12 @@
       "transactions": [],
       "previousHash": "0000000000000000000000000000000000000000000000000000000000000000",
       "nonce": 0,
-      "hash": "fa39680f82b19516988469b266ecc02061b88932fabecaffb3a0d2f4b1cb1d63"
+      "merkleRoot": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "hash": "ca834f95f2748190599809de42c1de2422533e15e300f4d116bdd61a0c5a128b"
     },
     {
       "index": 1,
-      "timestamp": 1784004161827531200,
+      "timestamp": 1784022942914929000,
       "transactions": [
         {
           "sender": "SYSTEM",
@@ -27,23 +28,17 @@
           "signature": ""
         },
         {
-          "sender": "Alice",
-          "recipient": "Bob",
-          "amount": 80,
-          "publicKey": "097498efd00bc49b25a01485908c722f6f0c3ba510f035ee11294990cc4d3c0b1ae6bd0a926affe70a93b10c2817c5d201769bbb11d63e305ccefc72988eae6a",
-          "signature": "183060ab88bdbe1075fec6133433869927238260775b4841aeb0ef69f204fe878a99c64b36dc8b688f4e2ae011a75af1716744e90cf452ca4f74c1e9200afdb5"
-        },
-        {
           "sender": "Bob",
           "recipient": "Alice",
-          "amount": 60,
+          "amount": 100,
           "publicKey": "b6ad009fb94d4621d0eaf072b50ffeecc49553f80b90dec2b36146f8e5ad47006fba4a545742def12f1af12845fbba25920648b11d97ba2b674cd2d3394f9ed4",
-          "signature": "a26e3dcd3e8463ed67549c27f9ba92f0e22645682923b8962f8b6b86affb526d159ff3f3f83dc1342ccf343c9e0e320d529833a1270251a5cdc94c55eced68a5"
+          "signature": "50032581ea6e3fb26387ae7ce985fa735d3b13a5dc718da2f4a975fa699a572f3e5b02026d42672cbdadb326081cbb1b563339776070dd9613b41a0c708f679e"
         }
       ],
-      "previousHash": "fa39680f82b19516988469b266ecc02061b88932fabecaffb3a0d2f4b1cb1d63",
-      "nonce": 17153,
-      "hash": "0000aaa33f1c86f8ee1bb78876c9f9d166c70bf5d9eae2b426e81a770e93bf79"
+      "previousHash": "ca834f95f2748190599809de42c1de2422533e15e300f4d116bdd61a0c5a128b",
+      "nonce": 3852,
+      "merkleRoot": "6371288752877ef9654ad79ef88d1382a12a863929deba28a8f967e2092952a8",
+      "hash": "000068bb624f6aaf930ca129d9108961c26b2753c6e00dc4041c5a6ccde6811a"
     }
   ],
   "pendingTransactions": [],
