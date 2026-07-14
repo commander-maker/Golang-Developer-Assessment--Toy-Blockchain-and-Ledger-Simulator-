@@ -59,6 +59,42 @@ func TestBlock_Mine(t *testing.T) {
 	}
 }
 
+func TestBlock_MineWithWorkers_ProducesSameValidHash(t *testing.T) {
+	txs := singleTx("Alice", "Bob", 10.0)
+	b1 := &blockchain.Block{
+		Index:        1,
+		Timestamp:    1234567,
+		Transactions: txs,
+		PrevHash:     "prevHash",
+		Nonce:        0,
+	}
+	b2 := &blockchain.Block{
+		Index:        1,
+		Timestamp:    1234567,
+		Transactions: txs,
+		PrevHash:     "prevHash",
+		Nonce:        0,
+	}
+
+	difficulty := 3
+	b1.Mine(difficulty)
+	b2.MineWithWorkers(difficulty, 4)
+
+	expectedPrefix := strings.Repeat("0", difficulty)
+	if !strings.HasPrefix(b2.Hash, expectedPrefix) {
+		t.Fatalf("expected mined block hash to start with %q, got %q", expectedPrefix, b2.Hash)
+	}
+
+	recalculatedHash := blockchain.CalculateHash(b2)
+	if b2.Hash != recalculatedHash {
+		t.Fatalf("mined block hash %q does not match recalculated hash %q", b2.Hash, recalculatedHash)
+	}
+
+	if b1.Hash != b2.Hash {
+		t.Fatalf("expected sequential and concurrent mining to produce same hash for identical inputs, got %q and %q", b1.Hash, b2.Hash)
+	}
+}
+
 func TestMinePendingTransactions_UsesConfiguredBlockSize(t *testing.T) {
 	bc := blockchain.NewBlockchain()
 	bc.BlockSize = 2
