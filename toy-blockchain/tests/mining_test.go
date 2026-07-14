@@ -12,10 +12,10 @@ func TestMinePendingTransactions_CreatesBlockFromPendingPool(t *testing.T) {
 	if err := bc.AddTransaction(blockchain.Transaction{Sender: "SYSTEM", Recipient: "Alice", Amount: 50}); err != nil {
 		t.Fatal(err)
 	}
-	if err := bc.AddTransaction(blockchain.Transaction{Sender: "Alice", Recipient: "Bob", Amount: 20}); err != nil {
+	if err := bc.AddTransaction(blockchain.Transaction{Sender: "SYSTEM", Recipient: "Bob", Amount: 20}); err != nil {
 		t.Fatal(err)
 	}
-	if err := bc.AddTransaction(blockchain.Transaction{Sender: "Alice", Recipient: "Charlie", Amount: 10}); err != nil {
+	if err := bc.AddTransaction(blockchain.Transaction{Sender: "SYSTEM", Recipient: "Charlie", Amount: 10}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -68,10 +68,10 @@ func TestMinePendingTransactions_UsesConfiguredBlockSize(t *testing.T) {
 	}
 
 	for _, tx := range []blockchain.Transaction{
-		{Sender: "Alice", Recipient: "Bob", Amount: 10},
-		{Sender: "Alice", Recipient: "Carol", Amount: 5},
-		{Sender: "Alice", Recipient: "David", Amount: 3},
-		{Sender: "Alice", Recipient: "Eve", Amount: 2},
+		{Sender: "SYSTEM", Recipient: "Bob", Amount: 10},
+		{Sender: "SYSTEM", Recipient: "Carol", Amount: 5},
+		{Sender: "SYSTEM", Recipient: "David", Amount: 3},
+		{Sender: "SYSTEM", Recipient: "Eve", Amount: 2},
 	} {
 		if err := bc.AddTransaction(tx); err != nil {
 			t.Fatal(err)

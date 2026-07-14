@@ -10,17 +10,40 @@
     },
     {
       "index": 1,
-      "timestamp": 1783673137593469300,
+      "timestamp": 1784004161827531200,
       "transactions": [
         {
           "sender": "SYSTEM",
+          "recipient": "Bob",
+          "amount": 100,
+          "publicKey": "",
+          "signature": ""
+        },
+        {
+          "sender": "SYSTEM",
           "recipient": "Alice",
-          "amount": 50
+          "amount": 100,
+          "publicKey": "",
+          "signature": ""
+        },
+        {
+          "sender": "Alice",
+          "recipient": "Bob",
+          "amount": 80,
+          "publicKey": "097498efd00bc49b25a01485908c722f6f0c3ba510f035ee11294990cc4d3c0b1ae6bd0a926affe70a93b10c2817c5d201769bbb11d63e305ccefc72988eae6a",
+          "signature": "183060ab88bdbe1075fec6133433869927238260775b4841aeb0ef69f204fe878a99c64b36dc8b688f4e2ae011a75af1716744e90cf452ca4f74c1e9200afdb5"
+        },
+        {
+          "sender": "Bob",
+          "recipient": "Alice",
+          "amount": 60,
+          "publicKey": "b6ad009fb94d4621d0eaf072b50ffeecc49553f80b90dec2b36146f8e5ad47006fba4a545742def12f1af12845fbba25920648b11d97ba2b674cd2d3394f9ed4",
+          "signature": "a26e3dcd3e8463ed67549c27f9ba92f0e22645682923b8962f8b6b86affb526d159ff3f3f83dc1342ccf343c9e0e320d529833a1270251a5cdc94c55eced68a5"
         }
       ],
       "previousHash": "fa39680f82b19516988469b266ecc02061b88932fabecaffb3a0d2f4b1cb1d63",
-      "nonce": 24479,
-      "hash": "0000b5aa7daa77378cf4509b502ce19adbe7743be8be703c24fdbddf543eb505"
+      "nonce": 17153,
+      "hash": "0000aaa33f1c86f8ee1bb78876c9f9d166c70bf5d9eae2b426e81a770e93bf79"
     }
   ],
   "pendingTransactions": [],

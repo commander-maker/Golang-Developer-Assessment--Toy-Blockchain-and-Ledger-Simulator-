@@ -1,8 +1,12 @@
 package main
 
 import (
+	"crypto/ecdsa"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"toy-blockchain/blockchain"
@@ -11,7 +15,8 @@ import (
 func usage() {
 	fmt.Println("Usage:")
 	fmt.Println("  go run ./cmd init")
-	fmt.Println("  go run ./cmd addtx <sender> <recipient> <amount>")
+	fmt.Println("  go run ./cmd addtx <sender> <recipient> <amount> [--key <path>]")
+	fmt.Println("  go run ./cmd generate-key <name>")
 	fmt.Println("  go run ./cmd mine")
 	fmt.Println("  go run ./cmd print")
 	fmt.Println("  go run ./cmd balances")
@@ -22,92 +27,140 @@ func usage() {
 	fmt.Println("  --difficulty <n>   Mining difficulty (default: 4)")
 	fmt.Println("  --blocksize <n>   Maximum transactions per block (default: 10)")
 	fmt.Println("  --file <path>     Blockchain data file (default: blockchain.json)")
+	fmt.Println("  --key <path>      PEM private key file used to sign addtx transactions")
 }
 
-func parseCLI(args []string) (string, []string, int, bool, int, bool, string, error) {
+func parseCLI(args []string) (string, []string, int, bool, int, bool, string, string, error) {
 	difficulty := -1
 	blockSize := -1
 	dataFile := blockchain.DefaultDataFile
 	difficultySet := false
 	blockSizeSet := false
+	keyFile := ""
 
-	remaining := []string{}
+	cmd := ""
+	cmdArgs := []string{}
+
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
-		if strings.HasPrefix(arg, "--difficulty=") {
+		switch {
+		case strings.HasPrefix(arg, "--difficulty="):
 			value := strings.TrimPrefix(arg, "--difficulty=")
 			d, err := strconv.Atoi(value)
 			if err != nil {
-				return "", nil, 0, false, 0, false, "", fmt.Errorf("invalid difficulty: %v", err)
+				return "", nil, 0, false, 0, false, "", "", fmt.Errorf("invalid difficulty: %v", err)
 			}
 			difficulty = d
 			difficultySet = true
-			continue
-		}
-		if strings.HasPrefix(arg, "--blocksize=") {
+		case strings.HasPrefix(arg, "--blocksize="):
 			value := strings.TrimPrefix(arg, "--blocksize=")
 			b, err := strconv.Atoi(value)
 			if err != nil {
-				return "", nil, 0, false, 0, false, "", fmt.Errorf("invalid blocksize: %v", err)
+				return "", nil, 0, false, 0, false, "", "", fmt.Errorf("invalid blocksize: %v", err)
 			}
 			blockSize = b
 			blockSizeSet = true
-			continue
-		}
-		if strings.HasPrefix(arg, "--file=") {
+		case strings.HasPrefix(arg, "--file="):
 			dataFile = strings.TrimPrefix(arg, "--file=")
-			continue
-		}
-
-		switch arg {
-		case "--difficulty":
+		case strings.HasPrefix(arg, "--key="):
+			keyFile = strings.TrimPrefix(arg, "--key=")
+		case arg == "--difficulty":
 			if i+1 >= len(args) {
-				return "", nil, 0, false, 0, false, "", fmt.Errorf("missing value for --difficulty")
+				return "", nil, 0, false, 0, false, "", "", fmt.Errorf("missing value for --difficulty")
 			}
 			d, err := strconv.Atoi(args[i+1])
 			if err != nil {
-				return "", nil, 0, false, 0, false, "", fmt.Errorf("invalid difficulty: %v", err)
+				return "", nil, 0, false, 0, false, "", "", fmt.Errorf("invalid difficulty: %v", err)
 			}
 			difficulty = d
 			difficultySet = true
 			i++
-		case "--blocksize":
+		case arg == "--blocksize":
 			if i+1 >= len(args) {
-				return "", nil, 0, false, 0, false, "", fmt.Errorf("missing value for --blocksize")
+				return "", nil, 0, false, 0, false, "", "", fmt.Errorf("missing value for --blocksize")
 			}
 			b, err := strconv.Atoi(args[i+1])
 			if err != nil {
-				return "", nil, 0, false, 0, false, "", fmt.Errorf("invalid blocksize: %v", err)
+				return "", nil, 0, false, 0, false, "", "", fmt.Errorf("invalid blocksize: %v", err)
 			}
 			blockSize = b
 			blockSizeSet = true
 			i++
-		case "--file":
+		case arg == "--file":
 			if i+1 >= len(args) {
-				return "", nil, 0, false, 0, false, "", fmt.Errorf("missing value for --file")
+				return "", nil, 0, false, 0, false, "", "", fmt.Errorf("missing value for --file")
 			}
 			dataFile = args[i+1]
 			i++
+		case arg == "--key":
+			if i+1 >= len(args) {
+				return "", nil, 0, false, 0, false, "", "", fmt.Errorf("missing value for --key")
+			}
+			keyFile = args[i+1]
+			i++
+		case cmd == "" && isCommand(arg):
+			cmd = arg
+		case cmd == "" && !isCommand(arg):
+			return "", nil, 0, false, 0, false, "", "", fmt.Errorf("unknown command: %s", arg)
 		default:
-			remaining = append(remaining, arg)
+			cmdArgs = append(cmdArgs, arg)
 		}
 	}
 
-	if len(remaining) == 0 {
-		return "", nil, 0, false, 0, false, "", fmt.Errorf("command required")
+	if cmd == "" {
+		return "", nil, 0, false, 0, false, "", "", fmt.Errorf("command required")
 	}
 
-	cmd := remaining[0]
-	if !isCommand(cmd) {
-		return "", nil, 0, false, 0, false, "", fmt.Errorf("unknown command: %s", cmd)
+	return cmd, cmdArgs, difficulty, difficultySet, blockSize, blockSizeSet, dataFile, keyFile, nil
+}
+
+func requiresPrivateKey(sender, keyFile string) bool {
+	return sender != "SYSTEM" && keyFile == ""
+}
+
+func senderMatchesKeyFile(sender, keyFile string) bool {
+	if keyFile == "" {
+		return false
+	}
+	base := filepath.Base(keyFile)
+	if ext := filepath.Ext(base); ext != "" {
+		base = strings.TrimSuffix(base, ext)
+	}
+	return strings.EqualFold(sender, base)
+}
+
+func LoadPrivateKeyFromFile(path string) (*ecdsa.PrivateKey, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
 	}
 
-	return cmd, remaining[1:], difficulty, difficultySet, blockSize, blockSizeSet, dataFile, nil
+	block, _ := pem.Decode(data)
+	if block == nil {
+		return nil, fmt.Errorf("failed to decode PEM from %s", path)
+	}
+
+	switch block.Type {
+	case "EC PRIVATE KEY":
+		return x509.ParseECPrivateKey(block.Bytes)
+	case "PRIVATE KEY":
+		decoded, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+		if err != nil {
+			return nil, err
+		}
+		privateKey, ok := decoded.(*ecdsa.PrivateKey)
+		if !ok {
+			return nil, fmt.Errorf("unsupported private key type: %T", decoded)
+		}
+		return privateKey, nil
+	default:
+		return nil, fmt.Errorf("unsupported PEM block type: %s", block.Type)
+	}
 }
 
 func isCommand(arg string) bool {
 	switch arg {
-	case "init", "addtx", "mine", "print", "balances", "balance", "validate":
+	case "init", "addtx", "generate-key", "mine", "print", "balances", "balance", "validate":
 		return true
 	default:
 		return false
@@ -121,7 +174,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	cmd, cmdArgs, difficulty, difficultySet, blockSize, blockSizeSet, dataFile, err := parseCLI(args)
+	cmd, cmdArgs, difficulty, difficultySet, blockSize, blockSizeSet, dataFile, keyFile, err := parseCLI(args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to parse CLI flags: %v\n", err)
 		os.Exit(1)
@@ -158,12 +211,35 @@ func main() {
 			usage()
 			os.Exit(1)
 		}
+		if requiresPrivateKey(cmdArgs[0], keyFile) {
+			fmt.Fprintln(os.Stderr, "addtx requires a private key file via --key <path> for non-SYSTEM transactions")
+			os.Exit(1)
+		}
+		if cmdArgs[0] != "SYSTEM" && !senderMatchesKeyFile(cmdArgs[0], keyFile) {
+			fmt.Fprintf(os.Stderr, "transaction sender %q must match the key file name %q\n", cmdArgs[0], keyFile)
+			os.Exit(1)
+		}
 		amount, err := strconv.ParseFloat(cmdArgs[2], 64)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "invalid amount: %v\n", err)
 			os.Exit(1)
 		}
 		tx := blockchain.Transaction{Sender: cmdArgs[0], Recipient: cmdArgs[1], Amount: amount}
+		if cmdArgs[0] != "SYSTEM" {
+			privateKey, err := LoadPrivateKeyFromFile(keyFile)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "failed to load private key: %v\n", err)
+				os.Exit(1)
+			}
+			tx.PublicKey = blockchain.PublicKeyToString(&privateKey.PublicKey)
+			signature, err := blockchain.SignTransaction(&tx, privateKey)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "failed to sign transaction: %v\n", err)
+				os.Exit(1)
+			}
+			tx.Signature = signature
+		}
+
 		if err := bc.AddTransaction(tx); err != nil {
 			fmt.Fprintf(os.Stderr, "failed to add transaction: %v\n", err)
 			os.Exit(1)
@@ -173,6 +249,33 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Println("transaction added")
+
+	case "generate-key":
+		if len(cmdArgs) != 1 {
+			fmt.Fprintln(os.Stderr, "generate-key requires exactly one name")
+			os.Exit(1)
+		}
+		name := strings.TrimSpace(cmdArgs[0])
+		if name == "" {
+			fmt.Fprintln(os.Stderr, "generate-key requires a non-empty name")
+			os.Exit(1)
+		}
+		privateKey, err := blockchain.GenerateKeyPair()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to generate key pair: %v\n", err)
+			os.Exit(1)
+		}
+		encoded, err := x509.MarshalECPrivateKey(privateKey)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to encode private key: %v\n", err)
+			os.Exit(1)
+		}
+		path := fmt.Sprintf("%s.pem", name)
+		if err := os.WriteFile(path, pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: encoded}), 0o600); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to write private key file: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("generated %s\n", path)
 
 	case "mine":
 		bc.MinePendingTransactions()

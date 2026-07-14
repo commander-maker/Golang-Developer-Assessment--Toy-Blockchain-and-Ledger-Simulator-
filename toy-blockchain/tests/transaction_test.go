@@ -45,14 +45,49 @@ func TestAddTransaction_RejectsInsufficientBalance(t *testing.T) {
 func TestAddTransaction_AllowsPendingFundsToBeSpent(t *testing.T) {
 	bc := blockchain.NewBlockchain()
 
+	// Give Alice initial funds
 	if err := bc.AddTransaction(blockchain.Transaction{Sender: "SYSTEM", Recipient: "Alice", Amount: 20}); err != nil {
 		t.Fatal(err)
 	}
-	if err := bc.AddTransaction(blockchain.Transaction{Sender: "Alice", Recipient: "Bob", Amount: 10}); err != nil {
+
+	// Generate a key pair for Alice
+	privateKey, err := blockchain.GenerateKeyPair()
+	if err != nil {
+		t.Fatalf("failed to generate key pair: %v", err)
+	}
+	publicKeyStr := blockchain.PublicKeyToString(&privateKey.PublicKey)
+
+	// Alice sends 10 to Bob (this becomes pending)
+	tx1 := blockchain.Transaction{
+		Sender:    "Alice",
+		Recipient: "Bob",
+		Amount:    10,
+		PublicKey: publicKeyStr,
+	}
+	sig1, err := blockchain.SignTransaction(&tx1, privateKey)
+	if err != nil {
+		t.Fatalf("failed to sign transaction: %v", err)
+	}
+	tx1.Signature = sig1
+
+	if err := bc.AddTransaction(tx1); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := bc.AddTransaction(blockchain.Transaction{Sender: "Alice", Recipient: "Carol", Amount: 15}); err == nil {
+	// Alice tries to send 15 to Carol (should fail because 20 - 10 pending = 10 remaining)
+	tx2 := blockchain.Transaction{
+		Sender:    "Alice",
+		Recipient: "Carol",
+		Amount:    15,
+		PublicKey: publicKeyStr,
+	}
+	sig2, err := blockchain.SignTransaction(&tx2, privateKey)
+	if err != nil {
+		t.Fatalf("failed to sign transaction: %v", err)
+	}
+	tx2.Signature = sig2
+
+	if err := bc.AddTransaction(tx2); err == nil {
 		t.Fatal("expected insufficient balance error for Alice after pending spend")
 	}
 }

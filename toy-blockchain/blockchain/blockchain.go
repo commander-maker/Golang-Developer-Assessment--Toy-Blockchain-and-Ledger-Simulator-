@@ -140,11 +140,19 @@ func (bc *Blockchain) balances(includePending bool) map[string]float64 {
 }
 
 // AddTransaction validates a transaction and adds it to the pending transactions pool.
+// For non-SYSTEM transactions, it verifies the cryptographic signature before acceptance.
 func (bc *Blockchain) AddTransaction(tx Transaction) error {
 	if tx.Amount <= 0 {
 		return fmt.Errorf("transaction amount must be greater than zero, got %f", tx.Amount)
 	}
 	if tx.Sender != "SYSTEM" {
+		valid, err := VerifyTransaction(&tx)
+		if err != nil {
+			return fmt.Errorf("signature verification error: %v", err)
+		}
+		if !valid {
+			return fmt.Errorf("invalid transaction signature")
+		}
 		balances := bc.balances(true)
 		if balances[tx.Sender] < tx.Amount {
 			return fmt.Errorf("insufficient balance for sender %s: has %.8f, wants to send %.8f", tx.Sender, balances[tx.Sender], tx.Amount)
