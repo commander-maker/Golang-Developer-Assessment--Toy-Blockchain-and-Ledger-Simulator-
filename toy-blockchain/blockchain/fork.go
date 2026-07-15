@@ -1,58 +1,58 @@
 package blockchain
 
 import (
-    "fmt"
-    "strings"
-    "time"
+	"fmt"
+	"strings"
+	"time"
 )
 
 // CopyBlockchain performs a deep copy of a Blockchain. The returned copy does
 // not share any slices with the original: Blocks, each Block's Transactions,
 // and PendingTransactions are all independently allocated.
 func CopyBlockchain(bc *Blockchain) *Blockchain {
-    if bc == nil {
-        return nil
-    }
+	if bc == nil {
+		return nil
+	}
 
-    copyBC := &Blockchain{
-        Blocks:              make([]*Block, 0, len(bc.Blocks)),
-        PendingTransactions: make([]Transaction, 0, len(bc.PendingTransactions)),
-        Difficulty:          bc.Difficulty,
-        BlockSize:           bc.BlockSize,
-    }
+	copyBC := &Blockchain{
+		Blocks:              make([]*Block, 0, len(bc.Blocks)),
+		PendingTransactions: make([]Transaction, 0, len(bc.PendingTransactions)),
+		Difficulty:          bc.Difficulty,
+		BlockSize:           bc.BlockSize,
+	}
 
-    // Deep copy blocks
-    for _, b := range bc.Blocks {
-        if b == nil {
-            copyBC.Blocks = append(copyBC.Blocks, nil)
-            continue
-        }
-        // copy transactions slice
-        txs := make([]Transaction, len(b.Transactions))
-        copy(txs, b.Transactions)
+	// Deep copy blocks
+	for _, b := range bc.Blocks {
+		if b == nil {
+			copyBC.Blocks = append(copyBC.Blocks, nil)
+			continue
+		}
+		// copy transactions slice
+		txs := make([]Transaction, len(b.Transactions))
+		copy(txs, b.Transactions)
 
-        nb := &Block{
-            Index:        b.Index,
-            Timestamp:    b.Timestamp,
-            Transactions: txs,
-            PrevHash:     b.PrevHash,
-            Nonce:        b.Nonce,
-            MerkleRoot:   b.MerkleRoot,
-            Difficulty:   b.Difficulty,
-            MiningTime:   b.MiningTime,
-            Hash:         b.Hash,
-        }
-        copyBC.Blocks = append(copyBC.Blocks, nb)
-    }
+		nb := &Block{
+			Index:        b.Index,
+			Timestamp:    b.Timestamp,
+			Transactions: txs,
+			PrevHash:     b.PrevHash,
+			Nonce:        b.Nonce,
+			MerkleRoot:   b.MerkleRoot,
+			Difficulty:   b.Difficulty,
+			MiningTime:   b.MiningTime,
+			Hash:         b.Hash,
+		}
+		copyBC.Blocks = append(copyBC.Blocks, nb)
+	}
 
-    // Deep copy pending transactions
-    if len(bc.PendingTransactions) > 0 {
-        pts := make([]Transaction, len(bc.PendingTransactions))
-        copy(pts, bc.PendingTransactions)
-        copyBC.PendingTransactions = pts
-    }
+	// Deep copy pending transactions
+	if len(bc.PendingTransactions) > 0 {
+		pts := make([]Transaction, len(bc.PendingTransactions))
+		copy(pts, bc.PendingTransactions)
+		copyBC.PendingTransactions = pts
+	}
 
-    return copyBC
+	return copyBC
 }
 
 // ResolveFork compares two chains and returns the chosen chain according to
@@ -61,41 +61,41 @@ func CopyBlockchain(bc *Blockchain) *Blockchain {
 //  2. If both are valid, return the chain with more blocks.
 //  3. If both are valid and equal length, return the first chain (chainA).
 func ResolveFork(chainA, chainB *Blockchain) *Blockchain {
-    // Validate both chains
-    errA := chainA.Validate()
-    errB := chainB.Validate()
+	// Validate both chains
+	errA := chainA.Validate()
+	errB := chainB.Validate()
 
-    validA := errA == nil
-    validB := errB == nil
+	validA := errA == nil
+	validB := errB == nil
 
-    switch {
-    case validA && !validB:
-        return chainA
-    case !validA && validB:
-        return chainB
-    case !validA && !validB:
-        // neither valid — prefer chainA as a deterministic fallback
-        return chainA
-    default:
-        // both valid — choose longest
-        if len(chainA.Blocks) >= len(chainB.Blocks) {
-            return chainA
-        }
-        return chainB
-    }
+	switch {
+	case validA && !validB:
+		return chainA
+	case !validA && validB:
+		return chainB
+	case !validA && !validB:
+		// neither valid — prefer chainA as a deterministic fallback
+		return chainA
+	default:
+		// both valid — choose longest
+		if len(chainA.Blocks) >= len(chainB.Blocks) {
+			return chainA
+		}
+		return chainB
+	}
 }
 
 // formatChainShort returns a compact textual summary of the chain suitable
 // for printing in the fork simulation.
 func formatChainShort(bc *Blockchain) string {
-    if bc == nil {
-        return "<nil>"
-    }
-    var sb strings.Builder
-    sb.WriteString(fmt.Sprintf("Chain length: %d\n", len(bc.Blocks)))
-    for _, b := range bc.Blocks {
-        sb.WriteString(fmt.Sprintf("#%d %s prev=%s nonce=%d diff=%d time=%.2fs\n",
-            b.Index, b.Hash, b.PrevHash[:8], b.Nonce, b.Difficulty, time.Duration(b.MiningTime).Seconds()))
-    }
-    return sb.String()
+	if bc == nil {
+		return "<nil>"
+	}
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Chain length: %d\n", len(bc.Blocks)))
+	for _, b := range bc.Blocks {
+		sb.WriteString(fmt.Sprintf("#%d %s prev=%s nonce=%d diff=%d time=%.2fs\n",
+			b.Index, b.Hash, b.PrevHash[:8], b.Nonce, b.Difficulty, time.Duration(b.MiningTime).Seconds()))
+	}
+	return sb.String()
 }

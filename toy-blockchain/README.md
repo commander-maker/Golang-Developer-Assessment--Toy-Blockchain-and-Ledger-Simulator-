@@ -56,6 +56,8 @@ The CLI supports these commands:
   - Show current confirmed account balances
 - `go run ./cmd validate`
   - Validate blockchain integrity and proof-of-work
+- `go run ./cmd simulate-fork`
+  - Simulate a local fork with two independent chain copies, competing blocks, and longest-chain resolution
 
 ## Runtime Configuration
 
@@ -68,6 +70,11 @@ go run ./cmd mine --difficulty=5 --blocksize=2 --file=mychain.json
 - `--difficulty` sets proof-of-work difficulty (default: `4`)
 - `--blocksize` limits how many pending transactions are included in the mined block (default: `10`)
 - `--file` chooses the JSON file used for blockchain persistence (default: `blockchain.json`)
+
+## New Features
+
+- `simulate-fork` simulates a fork between two independent copies of the local blockchain and resolves the fork using the longest valid chain.
+- Difficulty retargeting is now supported: each mined block stores the difficulty used, mining time is measured, and the network difficulty is adjusted for the next block.
 
 ## Project Layout
 

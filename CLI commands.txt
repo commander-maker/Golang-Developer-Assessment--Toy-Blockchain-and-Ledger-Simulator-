@@ -31,3 +31,5 @@ show account balances
 go run ./cmd validate
 
 validate the blockchain
+
+go run ./cmd simulate-fork --file=blockchain.json

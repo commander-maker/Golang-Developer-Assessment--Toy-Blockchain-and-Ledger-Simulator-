@@ -100,52 +100,54 @@ func (b *Block) MineWithWorkers(difficulty, workerCount int) {
 		workerCount = 1
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background()) //broadcast cancel to all workers when one finds a valid hash
 	defer cancel()
 
-	resultCh := make(chan *Block, 1)
-	var wg sync.WaitGroup
+	resultCh := make(chan *Block, 1) // This channel stores The first successful block
+
+	var wg sync.WaitGroup //The WaitGroup waits until every goroutine exits.
 
 	// Launch workers to explore disjoint nonce partitions.
 	for workerID := 0; workerID < workerCount; workerID++ {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
-			workerBlock := *b // copy block metadata, share Transactions slice safely
-			workerBlock.Nonce = id
+			workerBlock := *b // copy block metadata, share Transactions slice safely,Each worker gets its own copy.
+                              //Otherwise, all workers would modify
+			workerBlock.Nonce = id //Different Starting Nonces
 
 			for {
 				select {
-				case <-ctx.Done():
-					return
+				case <-ctx.Done(): //If another worker has already found a valid block,
+					return         //and this worker immediately exits.
 				default:
 				}
 
 				hash := CalculateHash(&workerBlock)
-				if strings.HasPrefix(hash, target) {
-					workerBlock.Hash = hash
+				if strings.HasPrefix(hash, target) { //Check Difficulty
+					workerBlock.Hash = hash          //Save Winning Hash
 					select {
-					case resultCh <- &workerBlock:
-						cancel()
-					default:
+					case resultCh <- &workerBlock:   //Only the first successful worker can send Result - channel size = 1
+						cancel()                     //stops every other worker.
+					default:          
 					}
 					return
 				}
 
-				workerBlock.Nonce += workerCount
+				workerBlock.Nonce += workerCount  //all workers would duplicate work.
 			}
 		}(workerID)
 	}
 
 	// Wait for the first successful worker, then wait for all workers to exit.
 	var winningBlock *Block
-	select {
+	select {                                //The main thread waits until one worker succeeds
 	case winningBlock = <-resultCh:
 		// found a valid hash
 	case <-ctx.Done():
 	}
-	wg.Wait()
-
+	wg.Wait()                              //Ensures every goroutine has exited before continuing
+ 
 	if winningBlock != nil {
 		b.Nonce = winningBlock.Nonce
 		b.Hash = winningBlock.Hash
@@ -156,7 +158,7 @@ func (b *Block) MineWithWorkers(difficulty, workerCount int) {
 	// inspect and use it for difficulty retargeting.
 	b.MiningTime = int64(elapsed)
 
-	fmt.Printf("Mining Time :\n%.2f seconds\n\n", elapsed.Seconds())
+	fmt.Printf("Mining Time :\n%2.f seconds\n\n", elapsed.Seconds())
 	fmt.Printf("Difficulty Used : %d\n\n", difficulty)
 	fmt.Printf("Nonce Found : %d\n\n", b.Nonce)
 	fmt.Printf("Hash        :\n%s\n\n", b.Hash)
