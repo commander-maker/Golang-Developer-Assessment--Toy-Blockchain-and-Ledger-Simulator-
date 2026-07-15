@@ -22,6 +22,7 @@ func usage() {
 	fmt.Println("  go run ./cmd balances")
 	fmt.Println("  go run ./cmd balance <account>")
 	fmt.Println("  go run ./cmd validate")
+	fmt.Println("  go run ./cmd simulate-fork")
 	fmt.Println()
 	fmt.Println("Global flags:")
 	fmt.Println("  --difficulty <n>   Mining difficulty (default: 4)")
@@ -160,7 +161,7 @@ func LoadPrivateKeyFromFile(path string) (*ecdsa.PrivateKey, error) {
 
 func isCommand(arg string) bool {
 	switch arg {
-	case "init", "addtx", "generate-key", "mine", "print", "balances", "balance", "validate":
+	case "init", "addtx", "generate-key", "mine", "print", "balances", "balance", "validate", "simulate-fork":
 		return true
 	default:
 		return false
@@ -315,6 +316,64 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Println("Validation passed: blockchain is valid")
+
+	case "simulate-fork":
+		// Create two independent copies of the loaded chain.
+		chainA := blockchain.CopyBlockchain(bc)
+		chainB := blockchain.CopyBlockchain(bc)
+
+		fmt.Println("Original chain:")
+		bc.Print()
+		fmt.Printf("Original chain length: %d\n\n", len(bc.Blocks))
+
+		// Mine one different block on each chain starting from the same parent.
+		fmt.Println("Mining divergent blocks on each chain...")
+		txA := blockchain.Transaction{Sender: "SYSTEM", Recipient: "ForkA", Amount: 1}
+		txB := blockchain.Transaction{Sender: "SYSTEM", Recipient: "ForkB", Amount: 2}
+
+		_ = chainA.AddTransaction(txA)
+		chainA.MinePendingTransactions()
+
+		_ = chainB.AddTransaction(txB)
+		chainB.MinePendingTransactions()
+
+		// Extend chainA to make it longer (simulate longer fork)
+		fmt.Println("Extending chain A to be longer...")
+		for i := 0; i < 2; i++ {
+			t := blockchain.Transaction{Sender: "SYSTEM", Recipient: fmt.Sprintf("A_extra_%d", i), Amount: float64(i + 1)}
+			_ = chainA.AddTransaction(t)
+			chainA.MinePendingTransactions()
+		}
+
+		fmt.Println("\n--- Chain A ---")
+		chainA.Print()
+		fmt.Printf("Chain A length: %d\n", len(chainA.Blocks))
+		if err := chainA.Validate(); err != nil {
+			fmt.Printf("Chain A validation: failed: %v\n", err)
+		} else {
+			fmt.Println("Chain A validation: valid")
+		}
+
+		fmt.Println("\n--- Chain B ---")
+		chainB.Print()
+		fmt.Printf("Chain B length: %d\n", len(chainB.Blocks))
+		if err := chainB.Validate(); err != nil {
+			fmt.Printf("Chain B validation: failed: %v\n", err)
+		} else {
+			fmt.Println("Chain B validation: valid")
+		}
+
+		// Resolve the fork using the simple longest-valid-chain rule.
+		winner := blockchain.ResolveFork(chainA, chainB)
+		fmt.Println("\n--- Fork Resolution ---")
+		if winner == chainA {
+			fmt.Println("Winning chain: Chain A")
+		} else {
+			fmt.Println("Winning chain: Chain B")
+		}
+
+		fmt.Println("\n--- Adopted Chain (simulation) ---")
+		winner.Print()
 
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", cmd)

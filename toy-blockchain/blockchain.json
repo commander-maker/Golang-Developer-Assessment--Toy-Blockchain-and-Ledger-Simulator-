@@ -70,7 +70,7 @@
         {
           "sender": "Bob",
           "recipient": "Pasan",
-          "amount": 40,
+          "amount": 20,
           "publicKey": "b6ad009fb94d4621d0eaf072b50ffeecc49553f80b90dec2b36146f8e5ad47006fba4a545742def12f1af12845fbba25920648b11d97ba2b674cd2d3394f9ed4",
           "signature": "0c33564bff73872d688553e4b6802435c93cbaaae7575dd5f8dc722de35cd452fef3696ed81101665e3434701a26f13f460f0c6d6f099c4c23290d1c4277adc9"
         }
