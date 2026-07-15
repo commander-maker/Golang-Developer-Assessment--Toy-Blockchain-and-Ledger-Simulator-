@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // GenesisPrevHash is the canonical previous-hash value for the Genesis block.
@@ -20,6 +21,52 @@ const DefaultDifficulty = 4
 
 // DefaultBlockSize limits how many transactions are mined into a single block.
 const DefaultBlockSize = 10
+
+// TargetBlockTime is the target duration we want each block to take to mine.
+// The retargeting algorithm increases difficulty when blocks are mined faster
+// than this target and decreases difficulty when they are slower.
+var TargetBlockTime = 1 * time.Second
+
+// AdjustDifficulty is a simple retargeting algorithm that adjusts the
+// difficulty based on the observed miningTime relative to the target.
+// It never allows difficulty to drop below 1.
+func AdjustDifficulty(currentDifficulty int, miningTime time.Duration, target time.Duration) int {
+	next := currentDifficulty
+	if miningTime < target {
+		next = currentDifficulty + 1
+	} else if miningTime > target && currentDifficulty > 1 {
+		next = currentDifficulty - 1
+	}
+	if next < 1 {
+		next = 1
+	}
+	return next
+}
+
+// recentAverageMiningTime computes the average mining time (duration) of the
+// most recent `n` mined blocks, excluding the genesis block and any blocks
+// that do not have a recorded MiningTime (>0). If no valid samples exist,
+// it returns 0.
+func recentAverageMiningTime(bc *Blockchain, n int) time.Duration {
+	if n <= 0 {
+		n = 3
+	}
+	var sum time.Duration
+	var count int
+	// iterate backwards skipping genesis (index 0)
+	for i := len(bc.Blocks) - 1; i >= 1 && count < n; i-- {
+		mt := time.Duration(bc.Blocks[i].MiningTime)
+		if mt <= 0 {
+			continue
+		}
+		sum += mt
+		count++
+	}
+	if count == 0 {
+		return 0
+	}
+	return time.Duration(int64(sum) / int64(count))
+}
 
 // Blockchain is an ordered slice of Block pointers.
 // The first element (index 0) is always the Genesis block.
@@ -72,6 +119,11 @@ func NewBlockchainWithConfig(difficulty, blockSize int) *Blockchain {
 	//           genesisBlock() returns the block WITHOUT a hash yet — the hash
 	//           step is deliberately kept here so the flow is explicit.
 	genesis := newGenesisBlock()
+	// Record the initial difficulty on the genesis block so the chain has a
+	// complete history of difficulty values from the start. This also ensures
+	// validation will check the genesis block against the difficulty used to
+	// create it.
+	genesis.Difficulty = bc.Difficulty
 
 	// Step 3 — Calculate Merkle root and Hash: compute Merkle root from txs,
 	// then compute SHA-256 over the five input fields. This is the only place
@@ -242,8 +294,45 @@ func (bc *Blockchain) MinePendingTransactions() {
 
 	transactionsToMine := append([]Transaction(nil), bc.PendingTransactions[:maxTransactions]...)
 	newBlock := NewBlock(prev.Index+1, transactionsToMine, prev.Hash)
+
+	// Set the block's Difficulty to the current network difficulty before
+	// mining. This ensures the block records which difficulty was used so it
+	// can be validated later even if the network difficulty changes.
+	newBlock.Difficulty = bc.Difficulty
+
 	newBlock.Mine(bc.Difficulty)
+
+	// Append the block first so recentAverageMiningTime can observe it.
 	bc.Blocks = append(bc.Blocks, newBlock)
+
+	// Compute a stable average mining time over the most recent few blocks
+	// (including the one we just mined). This avoids reacting to a single
+	// very-fast sample and stabilizes retargeting.
+	avg := recentAverageMiningTime(bc, 3)
+	// If we couldn't compute an average (no valid samples), fall back to
+	// this block's measured time.
+	if avg <= 0 {
+		avg = time.Duration(newBlock.MiningTime)
+	}
+
+	// After mining, adjust the network difficulty for the next block based
+	// on the averaged mining time.
+	nextDifficulty := AdjustDifficulty(bc.Difficulty, avg, TargetBlockTime)
+
+	// Print a concise summary including the next difficulty so users can
+	// observe retargeting in action.
+	fmt.Println("--------------------------------------------------")
+	fmt.Printf("Block #%d mined\n", newBlock.Index)
+	fmt.Printf("Mining Time : %.2f seconds\n", time.Duration(newBlock.MiningTime).Seconds())
+	fmt.Printf("Avg Mining Time (used for retarget) : %.2f seconds\n", avg.Seconds())
+	fmt.Printf("Difficulty Used : %d\n", newBlock.Difficulty)
+	fmt.Printf("Next Difficulty : %d\n", nextDifficulty)
+	fmt.Printf("Nonce : %d\n", newBlock.Nonce)
+	fmt.Println("--------------------------------------------------")
+
+	// Apply the retarget for the next block.
+	bc.Difficulty = nextDifficulty
+
 	if maxTransactions < len(bc.PendingTransactions) {
 		bc.PendingTransactions = append([]Transaction(nil), bc.PendingTransactions[maxTransactions:]...)
 	} else {
@@ -264,7 +353,6 @@ func (bc *Blockchain) Validate() error {
 	}
 
 	bc.applyDefaults()
-	target := strings.Repeat("0", bc.Difficulty)
 
 	for i, current := range bc.Blocks {
 		// Verify MerkleRoot matches the transactions to detect tampering.
@@ -302,7 +390,11 @@ func (bc *Blockchain) Validate() error {
 		if current.PrevHash != prev.Hash {
 			return fmt.Errorf("invalid block %d: previous hash does not match hash of block %d", current.Index, prev.Index)
 		}
-		if !strings.HasPrefix(current.Hash, target) {
+		// Use the difficulty that was recorded on the block when it was
+		// mined rather than the current network difficulty. Historical
+		// blocks must validate against the parameters they were mined with.
+		blockTarget := strings.Repeat("0", current.Difficulty)
+		if !strings.HasPrefix(current.Hash, blockTarget) {
 			return fmt.Errorf("invalid block %d: proof of work not satisfied", current.Index)
 		}
 		if current.Timestamp < prev.Timestamp {

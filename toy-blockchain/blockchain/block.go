@@ -25,7 +25,16 @@ type Block struct {
 	PrevHash     string        `json:"previousHash"`
 	Nonce        int           `json:"nonce"`
 	MerkleRoot   string        `json:"merkleRoot"`
-	Hash         string        `json:"hash"`
+	// Difficulty records the exact difficulty used to mine this block. It is
+	// stored per-block so historical blocks can be validated against the
+	// same parameters they were mined with rather than relying on the
+	// current network difficulty which may have since changed.
+	Difficulty int `json:"difficulty"`
+	// MiningTime stores the observed mining duration as nanoseconds. This
+	// allows the chain to adjust future difficulty (retargeting) based on
+	// how long blocks actually took to mine.
+	MiningTime int64  `json:"miningTimeNanoseconds"`
+	Hash       string `json:"hash"`
 }
 
 // NewBlock creates and returns a new Block.
@@ -61,6 +70,10 @@ func NewBlock(index int, txs []Transaction, prevHash string) *Block {
 // and cancellation is propagated to all other workers using context.
 // The original block receives the successful nonce and hash before returning.
 func (b *Block) Mine(difficulty int) {
+	// Store the intended difficulty on the block so the mining routines and
+	// future validation use the same difficulty value. This preserves a
+	// historical record of the difficulty used to mine each block.
+	b.Difficulty = difficulty
 	b.MineWithWorkers(difficulty, runtime.NumCPU())
 }
 
@@ -70,6 +83,13 @@ func (b *Block) Mine(difficulty int) {
 // A value <= 0 defaults to runtime.NumCPU().
 func (b *Block) MineWithWorkers(difficulty, workerCount int) {
 	b.MerkleRoot = CalculateMerkleRoot(b.Transactions)
+	// Prefer the block's stored difficulty if it is set. The difficulty
+	// parameter remains for compatibility, but actual work should use the
+	// block's Difficulty so historical blocks remain verifiable.
+	if b.Difficulty > 0 {
+		difficulty = b.Difficulty
+	}
+
 	fmt.Printf("Mining Block #%d...\n\n", b.Index)
 	start := time.Now()
 	target := strings.Repeat("0", difficulty)
@@ -132,8 +152,12 @@ func (b *Block) MineWithWorkers(difficulty, workerCount int) {
 	}
 
 	elapsed := time.Since(start)
-	fmt.Printf("Difficulty  : %d\n\n", difficulty)
+	// Store mining duration on the block in nanoseconds so callers can
+	// inspect and use it for difficulty retargeting.
+	b.MiningTime = int64(elapsed)
+
+	fmt.Printf("Mining Time :\n%.2f seconds\n\n", elapsed.Seconds())
+	fmt.Printf("Difficulty Used : %d\n\n", difficulty)
 	fmt.Printf("Nonce Found : %d\n\n", b.Nonce)
 	fmt.Printf("Hash        :\n%s\n\n", b.Hash)
-	fmt.Printf("Time        :\n%.2f seconds\n\n", elapsed.Seconds())
 }
